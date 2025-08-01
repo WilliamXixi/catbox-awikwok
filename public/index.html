@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🐱 Upload ke Catbox</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: url('bg.jpg') center/cover no-repeat;
+      margin: 0;
+    }
+    .container {
+      background: rgba(255,255,255,0.95);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 400px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label {
+      display: block;
+      padding: 20px;
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+    img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Upload ke Catbox 🐱</h2>
+    <label for="fileInput">Klik untuk pilih gambar</label>
+    <input type="file" id="fileInput" />
+    <img id="preview" style="display:none" />
+    <br/>
+    <button id="uploadBtn">Upload</button>
+    <div class="result" id="result"></div>
+    <p style="font-size: 14px; opacity: 0.7; margin-top: 10px;">
+      Atau tekan <strong>Ctrl + V</strong> untuk paste gambar dari clipboard.
+    </p>
+  </div>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const result = document.getElementById('result');
+    let file;
+
+    fileInput.addEventListener('change', e => {
+      file = e.target.files[0];
+      if (file) showPreview(file);
+    });
+
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          file = items[i].getAsFile();
+          showPreview(file);
+          break;
+        }
+      }
+    });
+
+    function showPreview(file) {
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!file) return alert('Pilih file terlebih dahulu');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (data.link) {
+          result.innerHTML = `<p>✅ Uploaded:</p><a href="\${data.link}" target="_blank">\${data.link}</a>`;
+        } else {
+          result.innerHTML = `❌ Gagal upload: \${data.error || 'Unknown error'}`;
+        }
+      } catch (err) {
+        result.innerHTML = `❌ Gagal upload: \${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
