@@ -1,7 +1,10 @@
+import formidable from 'formidable';
+import fs from 'fs';
+
 export const config = {
   api: {
-    bodyParser: false
-  }
+    bodyParser: false,
+  },
 };
 
 export default async function handler(req, res) {
@@ -9,41 +12,32 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const busboy = require('busboy');
-  const BB = busboy({ headers: req.headers });
+  const form = new formidable.IncomingForm({ multiples: false });
 
-  let imageBuffer;
-  let filename;
+  form.parse(req, async (err, fields, files) => {
+    if (err || !files.image) {
+      return res.status(500).json({ error: 'File parsing failed' });
+    }
 
-  BB.on('file', (_, file, info) => {
-    filename = info.filename;
-    const buffers = [];
-    file.on('data', (data) => buffers.push(data));
-    file.on('end', () => {
-      imageBuffer = Buffer.concat(buffers);
-    });
-  });
-
-  BB.on('finish', async () => {
+    const file = fs.createReadStream(files.image.filepath);
     const formData = new FormData();
     formData.append('reqtype', 'fileupload');
-    formData.append('fileToUpload', new Blob([imageBuffer]), filename);
+    formData.append('fileToUpload', file);
 
     try {
       const response = await fetch('https://catbox.moe/user/api.php', {
         method: 'POST',
         body: formData
       });
+
       const text = await response.text();
       if (text.startsWith('https://')) {
         res.status(200).json({ link: text });
       } else {
         res.status(500).json({ error: text });
       }
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   });
-
-  req.pipe(BB);
 }
